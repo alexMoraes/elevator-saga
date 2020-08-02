@@ -8,7 +8,7 @@
             }
         }
         
-        const getNextFromQueue = () => floorQueue.shift();
+        const getNextFromQueue = () => floorQueue[0];
         const getFromQueue = (floorNum, direction) => {
             const filterFunction = direction === "stopped" ?
                   floor => floor.floorNum === floorNum :
@@ -87,6 +87,28 @@
             elevator.checkDestinationQueue();
         };
         
+        const reschedule = elevator => {
+            const direction = getDirection(elevator);
+            const pressedFloors = elevator.getPressedFloors();
+            const rescheduledQueue = elevator.destinationQueue.filter(floorNum => {
+                if(pressedFloors.includes(floorNum))
+                    return true;
+                
+                const filterFunction = direction === "stopped" ?
+                      floor => floor.floorNum === floorNum :
+                      floor => floor.floorNum === floorNum;
+                if(floorQueue.some(filterFunction))
+                    return true;
+                
+                return false;
+            });
+            
+            console.log("[RESCHEDULE] direction: " + direction + "; destinationQueue: " + elevator.destinationQueue + "; rescheduledQueue: " + rescheduledQueue)
+            elevator.destinationQueue = rescheduledQueue;
+            
+            elevator.checkDestinationQueue();
+        }
+        
         floors.forEach(floor => {
             floor.on("up_button_pressed", () => addFloorToQueue(floor.floorNum(), "up"));
             floor.on("down_button_pressed", () => addFloorToQueue(floor.floorNum(), "down"));
@@ -114,6 +136,8 @@
             });
             
             elevator.on("passing_floor", (floorNum, _) => {
+                reschedule(elevator);
+                
                 const capacity = elevator.maxPassengerCount();
                 const loadFactor = elevator.loadFactor();
                 const threshold = 0.7;
